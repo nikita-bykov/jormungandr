@@ -296,6 +296,11 @@ pub enum PropagateMsg {
 pub enum NetworkMsg {
     Propagate(PropagateMsg),
     GetBlocks(NodeId, Vec<HeaderHash>),
+    PullHeaders {
+        node_id: NodeId,
+        from: Vec<HeaderHash>,
+        to: HeaderHash,
+    },
 }
 
 #[cfg(test)]
