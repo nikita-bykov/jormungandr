@@ -7,7 +7,7 @@ use super::{
     subscription, Channels, ConnectionState,
 };
 use crate::{
-    blockcfg::{Block, HeaderHash},
+    blockcfg::{Block, Header, HeaderHash},
     intercom::{self, BlockMsg, ClientMsg},
 };
 use futures::prelude::*;
@@ -125,6 +125,7 @@ where
 impl<S> Client<S>
 where
     S: BlockService<Block = Block>,
+    S::PushHeadersFuture: Send + 'static,
     S::UploadBlocksFuture: Send + 'static,
 {
     fn process_block_event(&mut self, event: BlockEvent<S::Block>) {
@@ -154,6 +155,30 @@ where
                         })
                         .map_err(move |err| {
                             warn!(err_logger, "UploadBlocks request failed: {:?}", err);
+                        }),
+                );
+            }
+            BlockEvent::Missing { from, to } => {
+                let (reply_handle, stream) = intercom::stream_reply::<
+                    Header,
+                    network_core::error::Error,
+                >(self.logger.clone());
+                self.channels.client_box.send_to(ClientMsg::GetHeadersRange(
+                    from,
+                    to,
+                    reply_handle,
+                ));
+                let node_id = self.remote_node_id;
+                let done_logger = self.logger.clone();
+                let err_logger = self.logger.clone();
+                tokio::spawn(
+                    self.service
+                        .push_headers(stream)
+                        .map(move |_| {
+                            debug!(done_logger, "finished pushing headers to {}", node_id);
+                        })
+                        .map_err(move |err| {
+                            warn!(err_logger, "PushHeaders request failed: {:?}", err);
                         }),
                 );
             }
@@ -244,6 +269,7 @@ where
     S::GetBlocksStream: Send + 'static,
     S::PullHeadersFuture: Send + 'static,
     S::PullHeadersStream: Send + 'static,
+    S::PushHeadersFuture: Send + 'static,
     S::UploadBlocksFuture: Send + 'static,
 {
     type Item = ();
