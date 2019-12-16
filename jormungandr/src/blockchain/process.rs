@@ -1,6 +1,5 @@
 use super::{
-    candidate::{self, CandidateForest},
-    chain,
+    candidate, chain,
     chain_selection::{self, ComparisonResult},
     Blockchain, Error, ErrorKind, PreCheckedHeader, Ref, Tip, MAIN_BRANCH_TAG,
 };
@@ -38,7 +37,6 @@ const DEFAULT_TIMEOUT_PROCESS_HEADERS: u64 = 60;
 pub struct Process {
     pub blockchain: Blockchain,
     pub blockchain_tip: Tip,
-    pub candidate_forest: CandidateForest,
     pub stats_counter: StatsCounter,
     pub network_msgbox: MessageBox<NetworkMsg>,
     pub fragment_msgbox: MessageBox<TransactionMsg>,
@@ -64,7 +62,6 @@ impl Process {
         let blockchain_tip = self.blockchain_tip.clone();
         let network_msg_box = self.network_msgbox.clone();
         let explorer_msg_box = self.explorer_msgbox.clone();
-        let candidate_forest = self.candidate_forest.clone();
         let mut tx_msg_box = self.fragment_msgbox.clone();
         let stats_counter = self.stats_counter.clone();
 
@@ -167,7 +164,6 @@ impl Process {
                 };
                 let future = future::loop_fn(state, move |state| {
                     let blockchain = blockchain_fold.clone();
-                    let candidate_forest = candidate_forest.clone();
                     let tx_msg_box = tx_msg_box.clone();
                     let explorer_msg_box = explorer_msg_box.clone();
                     let stats_counter = stats_counter.clone();
@@ -182,7 +178,6 @@ impl Process {
                             Some(block) => Either::A(
                                 process_network_block(
                                     blockchain,
-                                    candidate_forest,
                                     block,
                                     tx_msg_box,
                                     explorer_msg_box,
@@ -240,7 +235,7 @@ impl Process {
                 let logger = info.logger().clone();
                 let logger_err = info.logger().clone();
 
-                let future = candidate_forest.advance_branch(stream);
+                let future = blockchain.advance_candidate_branch(stream);
                 let future = future.then(move |resp| match resp {
                     Err(e) => {
                         info!(
@@ -275,13 +270,13 @@ impl Process {
     }
 
     fn start_garbage_collector(&self, logger: Logger) -> impl Future<Item = (), Error = ()> {
-        let candidate_forest = self.candidate_forest.clone();
+        let blockchain = self.blockchain.clone();
         let garbage_collection_interval = self.garbage_collection_interval;
         let error_logger = logger.clone();
         Interval::new_interval(garbage_collection_interval)
             .for_each(move |_instant| {
                 debug!(logger, "garbage collecting unresolved branch candidates");
-                candidate_forest.purge()
+                blockchain.purge()
             })
             .map_err(move |e| {
                 error!(error_logger, "cannot run garbage collection" ; "reason" => %e);
@@ -470,7 +465,6 @@ fn process_block_announcement(
 
 pub fn process_network_block(
     blockchain: Blockchain,
-    candidate_forest: CandidateForest,
     block: Block,
     mut tx_msg_box: MessageBox<TransactionMsg>,
     mut explorer_msg_box: Option<MessageBox<ExplorerMsg>>,
@@ -499,7 +493,7 @@ pub fn process_network_block(
                     logger,
                     "block is missing a locally stored parent, caching as candidate"
                 );
-                A(B(candidate_forest.cache_block(block).map(|()| None)))
+                A(B(end_blockchain.cache_candidate_block(block).map(|()| None)))
             }
             PreCheckedHeader::HeaderWithCache { header, parent_ref } => {
                 let post_check_and_apply = blockchain
@@ -512,7 +506,7 @@ pub fn process_network_block(
                         };
                         let fragment_ids = block.fragments().map(|f| f.id()).collect::<Vec<_>>();
                         end_blockchain
-                            .apply_and_store_block(post_checked, block)
+                            .apply_network_block(post_checked, block)
                             .and_then(move |block_ref| {
                                 try_request_fragment_removal(&mut tx_msg_box, fragment_ids, block_ref.header()).unwrap_or_else(|err| {
                                     error!(logger, "cannot remove fragments from pool" ; "reason" => %err)
@@ -526,12 +520,6 @@ pub fn process_network_block(
                                 }
                                 Ok(block_ref)
                             })
-                    })
-                    .and_then(move |block_ref| {
-                        candidate_forest
-                            .on_applied_block(block_ref.hash())
-                            .map_err(|never| match never {})
-                            .map(|more_blocks| (block_ref, more_blocks))
                     })
                     .map(move |(block_ref, more_blocks)| {
                         info!(end_logger, "block successfully applied");
