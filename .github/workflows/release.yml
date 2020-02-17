@@ -66,14 +66,14 @@ jobs:
         with:
           use-cross: ${{ matrix.config.cross }}
           command: rustc
-          args: --release --target ${{ matrix.config.target }} -p jormungandr --bin jormungandr -- -C lto
+          args: --release --target ${{ matrix.config.target }} -p jormungandr --bin jormungandr -- -C ${{ matrix.config.rustflags }}
 
       - name: Build jcli
         uses: actions-rs/cargo@v1
         with:
           use-cross: ${{ matrix.config.cross }}
           command: rustc
-          args: --release --target ${{ matrix.config.target }} -p jcli --bin jcli -- -C lto ${{ matrix.config.rustflags }}
+          args: --release --target ${{ matrix.config.target }} -p jcli --bin jcli -- -C ${{ matrix.config.rustflags }}
 
       - name: Get tag version
         id: get_version
