@@ -32,20 +32,20 @@ jobs:
       matrix:
         config:
           # Linux
-          - {os: ubuntu-latest, toolchain: stable, target: x86_64-unknown-linux-gnu, rustflags: "", cross: false}
-          - {os: ubuntu-latest, toolchain: stable, target: aarch64-unknown-linux-gnu, rustflags: "", cross: true}
-          - {os: ubuntu-latest, toolchain: stable, target: arm-unknown-linux-gnueabi, rustflags: "", cross: true}
-          - {os: ubuntu-latest, toolchain: stable, target: armv7-unknown-linux-gnueabihf, rustflags: "", cross: true}
+          - {os: ubuntu-latest, toolchain: stable, target: x86_64-unknown-linux-gnu, rustflags: lto, cross: false}
+          - {os: ubuntu-latest, toolchain: stable, target: aarch64-unknown-linux-gnu, rustflags: lto, cross: true}
+          - {os: ubuntu-latest, toolchain: stable, target: arm-unknown-linux-gnueabi, rustflags: lto, cross: true}
+          - {os: ubuntu-latest, toolchain: stable, target: armv7-unknown-linux-gnueabihf, rustflags: lto, cross: true}
           # mips and powerpc are not compitble with ring v0.16.10, so they are disabled for now
 #          - {os: ubuntu-latest, target: mips64el-unknown-linux-gnuabi64, cross: true}
 #          - {os: ubuntu-latest, target: powerpc64le-unknown-linux-gnu, cross: true}
-          - {os: ubuntu-latest, toolchain: stable,  target: x86_64-unknown-linux-musl, rustflags: "", cross: true}
-          - {os: ubuntu-latest, toolchain: stable, target: aarch64-linux-android, rustflags: "", cross: true}
+          - {os: ubuntu-latest, toolchain: stable,  target: x86_64-unknown-linux-musl, rustflags: lto, cross: true}
+          - {os: ubuntu-latest, toolchain: stable, target: aarch64-linux-android, rustflags: lto, cross: true}
           # Macos
-          - {os: macos-latest, toolchain: stable, target: x86_64-apple-darwin, rustflags: "", cross: false}
+          - {os: macos-latest, toolchain: stable, target: x86_64-apple-darwin, rustflags: lto, cross: false}
           # Windows
-          - {os: windows-latest, toolchain: stable-x86_64-pc-windows-gnu, target: x86_64-pc-windows-gnu, rustflags: "", cross: false}
-          - {os: windows-latest, toolchain: stable-x86_64-pc-windows-msvc, target: x86_64-pc-windows-msvc, rustflags: "-C target-feature=+crt-static", cross: false}
+          - {os: windows-latest, toolchain: stable-x86_64-pc-windows-gnu, target: x86_64-pc-windows-gnu, rustflags: lto, cross: false}
+          - {os: windows-latest, toolchain: stable-x86_64-pc-windows-msvc, target: x86_64-pc-windows-msvc, rustflags: lto target-feature=+crt-static, cross: false}
     steps:
       - uses: actions-rs/toolchain@v1
         with:
@@ -70,12 +70,10 @@ jobs:
 
       - name: Build jcli
         uses: actions-rs/cargo@v1
-        env:
-          RUSTLAGS: ${{ matrix.config.rustflags }}
         with:
           use-cross: ${{ matrix.config.cross }}
           command: rustc
-          args: --release --target ${{ matrix.config.target }} -p jcli --bin jcli -- -C lto
+          args: --release --target ${{ matrix.config.target }} -p jcli --bin jcli -- -C lto ${{ matrix.config.rustflags }}
 
       - name: Get tag version
         id: get_version
