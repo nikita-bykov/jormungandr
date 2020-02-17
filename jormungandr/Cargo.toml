@@ -71,6 +71,11 @@ libc = "0.2.54"
 nix = "0.17.0"
 slog-syslog = "0.12.0"
 
+[target.'cfg(target = "x86_64-pc-windows-msvc")'.dependencies]
+rusqlite = { version = "0.16.0", features = ["unlock_notify"] }
+
+
+
 [features]
 with-bench = []
 integration-test = []
