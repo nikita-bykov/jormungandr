@@ -6,8 +6,9 @@ extern crate rand;
 use self::lazy_static::lazy_static;
 use self::rand::Rng;
 use super::file_utils;
+use escargot::CargoBuild;
 use std::env;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU16, Ordering};
 
 mod block0_config_builder;
@@ -20,37 +21,43 @@ pub use jormungandr_config::JormungandrConfig;
 pub use node_config_builder::NodeConfigBuilder;
 pub use secret_model_factory::SecretModelFactory;
 
+lazy_static! {
+    static ref JORMUNGANDR_BIN_PATH: PathBuf = {
+        CargoBuild::new()
+            .package("jormungandr")
+            .bin("jormungandr")
+            .current_release()
+            .run()
+            .unwrap()
+            .path()
+            .into()
+    };
+    static ref JCLI_BIN_PATH: PathBuf = {
+        CargoBuild::new()
+            .package("jcli")
+            .bin("jcli")
+            .current_release()
+            .run()
+            .unwrap()
+            .path()
+            .into()
+    };
+}
+
 /// Get jormungandr executable from current environment
-pub fn get_jormungandr_app() -> PathBuf {
-    const JORMUNGANDR_NAME: &'static str = env!("JORMUNGANDR_NAME");
-    let mut path = get_working_directory();
-    path.push(JORMUNGANDR_NAME);
-    if cfg!(windows) {
-        path.set_extension("exe");
-    }
-    assert!(
-        path.is_file(),
-        "File does not exist: {:?}, pwd: {:?}",
-        path,
-        env::current_dir()
-    );
-    path
+pub fn get_jormungandr_app() -> &'static Path {
+    &JORMUNGANDR_BIN_PATH
 }
 
 /// Get jcli executable from current environment
-pub fn get_jcli_app() -> PathBuf {
-    const JOR_CLI_NAME: &'static str = env!("JOR_CLI_NAME");
-    let mut path = get_working_directory();
-    path.push(JOR_CLI_NAME);
-    if cfg!(windows) {
-        path.set_extension("exe");
-    }
-    assert!(
-        path.is_file(),
-        "File does not exist: {:?}, pwd: {:?}",
-        path,
-        env::current_dir()
-    );
+pub fn get_jcli_app() -> &'static Path {
+    &JCLI_BIN_PATH
+}
+
+fn get_workspace_directory() -> PathBuf {
+    let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let has_parent = path.pop();
+    assert!(has_parent);
     path
 }
 
@@ -67,8 +74,7 @@ fn get_working_directory() -> PathBuf {
 }
 
 pub fn get_openapi_path() -> PathBuf {
-    let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    path.pop();
+    let mut path = get_workspace_directory();
     path.push("doc");
     path.push("openapi.yaml");
     path
