@@ -1943,8 +1943,6 @@ dependencies = [
  "galvanic-test",
  "grpc",
  "hex",
- "jcli",
- "jormungandr",
  "jormungandr-lib",
  "lazy_static",
  "mktemp",
