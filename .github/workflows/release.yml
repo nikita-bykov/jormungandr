@@ -8,7 +8,6 @@ name: Release
 jobs:
   initial_release:
     name: Create base release
-    if: ${{ github.repository_owner == 'input-output-hk' }}
     runs-on: ubuntu-latest
     outputs:
       upload_url: ${{ steps.create_release.outputs.upload_url }}
@@ -26,7 +25,6 @@ jobs:
 
   update_deps:
     name: Update dependencies
-    if: ${{ github.repository_owner == 'input-output-hk' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -73,7 +71,6 @@ jobs:
 
   release_assets:
     name: Release assets
-    if: ${{ github.repository_owner == 'input-output-hk' }}
     needs: [initial_release, update_deps]
     runs-on: ${{ matrix.config.os }}
     strategy:
