@@ -1,0 +1,70 @@
+on:
+  schedule:
+    - cron: '0 3 * * *' # run at 3 AM UTC
+  push:
+    branches:
+      - 'ci/test/nightly'
+
+name: Nightly Release
+
+jobs:
+  create_release:
+    name: Create nightly release
+    if: >
+      github.repository_owner == 'input-output-hk'
+      || startsWith(github.event.head_commit.message, 'TEST CI:')
+    runs-on: ubuntu-latest
+    outputs:
+      release_date: ${{ steps.version.outputs.date }}
+      version: ${{ steps.version.outputs.version }}
+      upload_url: ${{ steps.create_nightly.outputs.upload_url }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Get version from jormungandr/Cargo.toml
+        id: version
+        shell: python
+        run: |
+          from __future__ import print_function
+          import json, re
+          from datetime import date
+          from subprocess import Popen, PIPE
+          p = Popen(
+            'cargo read-manifest --manifest-path jormungandr/Cargo.toml',
+            shell=True,
+            stdout=PIPE
+          )
+          d = json.load(p.stdout)
+          date = date.today().strftime('%Y%m%d')
+          version = re.sub(
+            r'^(\d+\.\d+\.\d+)(-.*)?$',
+            r'\1-nightly.' + date,
+            d['version'],
+            count=1
+          )
+          print('::set-output name=date::' + date)
+          print('::set-output name=version::' + version)
+
+      - name: Delete existing nightly releases
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set +e
+          git ls-remote --tags --refs origin 'refs/tags/nightly*' |
+          cut -f 2 |
+          while read ref; do
+            hub release delete ${ref#refs/tags/}
+            git push --delete origin $ref
+          done
+
+      - name: Create Nightly
+        id: create_nightly
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          release_tag=nightly.${{ steps.version.outputs.date }}
+          hub release create --prerelease --draft \
+            -m "Release ${{ steps.version.outputs.version }} (in progress)" \
+            -t $GITHUB_SHA $release_tag
