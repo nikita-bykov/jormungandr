@@ -52,6 +52,30 @@ jobs:
         with:
           submodules: true
 
+      - name: Prune package versions for dependency cache key
+        run: |
+          perl -p - Cargo.lock > Cargo.lock.for-cache <<EOF
+            BEGIN {
+              $ln = 0; $ours = 0;
+            }
+            if (/^\[\[package\]\]/ .. ($ln == 2)) {
+              if (/^name = "(jormungandr.*|jcli)"/) {
+                $ours = 1;
+              } else {
+                s/^version =.*// if $ours;
+              }
+              ++$ln;
+            } else {
+              $ln = 0; $ours = 0;
+            }
+          EOF
+
+      - name: Upload dependency cache key
+        uses: actions/upload-artifact@v2
+        with:
+          name: deps-keyfile
+          path: Cargo.lock.for-cache
+
       - id: cargo-registry
         name: Cache cargo registry
         uses: actions/cache@v2
@@ -59,7 +83,7 @@ jobs:
           path: |
             ~/.cargo/registry/index
             ~/.cargo/registry/cache
-          key: cargo-registry-${{ hashFiles('Cargo.lock') }}
+          key: cargo-registry-${{ hashFiles('Cargo.lock.for-cache') }}
 
       - if: ${{ steps.cargo-registry.outputs.cache-hit != 'true' }}
         id: ls-crates-io-index
@@ -164,12 +188,10 @@ jobs:
         with:
           submodules: true
 
-      # https://github.com/actions/runner/issues/498
-      - if: ${{ runner.os == 'Windows' }}
-        name: Fix up Cargo.lock hash
-        run: |
-          ((Get-Content Cargo.lock) -join "`n") + "`n" |
-          Set-Content -NoNewline Cargo.lock
+      - name: Download dependency cache key
+        uses: actions/download-artifact@v2
+        with:
+          name: deps-keyfile
 
       - name: Restore cargo registry
         uses: actions/cache@v2
@@ -177,7 +199,7 @@ jobs:
           path: |
             ~/.cargo/registry/index
             ~/.cargo/registry/cache
-          key: cargo-registry-${{ hashFiles('Cargo.lock') }}
+          key: cargo-registry-${{ hashFiles('Cargo.lock.for-cache') }}
 
       - name: Create .cargo/config.toml
         shell: bash
