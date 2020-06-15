@@ -12,7 +12,7 @@ jobs:
     name: Create nightly release
     if: >
       github.repository_owner == 'input-output-hk'
-      || startsWith(github.event.head_commit.message, 'TEST CI:')
+      || github.ref == 'refs/heads/ci/test/nightly'
     runs-on: ubuntu-latest
     outputs:
       release_date: ${{ steps.version.outputs.date }}
