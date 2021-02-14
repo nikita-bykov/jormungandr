@@ -215,6 +215,8 @@ jobs:
           cd target/${{ matrix.config.target }}/release
           shasum jormungandr jcli > ${{ runner.temp }}/checksum
 
+      - run: sleep 10
+
       - name: Pack binaries
         run: |
           archive=jormungandr-${{ needs.create_release.outputs.version }}-${{ matrix.config.target }}-${{ matrix.target_cpu }}.tar.gz
