@@ -2,9 +2,9 @@
 on:
   # schedule:
   #   - cron: '0 3 * * *' # Nightly, run at 03:00 UTC
-  push:
-    tags:
-      - 'v[0-9]+.*' # Release tags matching v*, i.e. v1.0, v20.15.10
+  # push:
+  #   tags:
+  #     - 'v[0-9]+.*' # Release tags matching v*, i.e. v1.0, v20.15.10
   workflow_dispatch:
     # branches:
     #   - 'ci/test/nightly' # For testing nightly build workflow
@@ -14,10 +14,10 @@ name: Release
 jobs:
   create_release:
     name: Create release
-    if: >
-      github.repository_owner == 'input-output-hk'
-      || startsWith(github.ref, 'refs/heads/ci/test/')
-      || startsWith(github.ref, 'refs/tags/') && contains(github.ref, '-ci-test.')
+    # if: >
+    #   github.repository_owner == 'input-output-hk'
+    #   || startsWith(github.ref, 'refs/heads/ci/test/')
+    #   || startsWith(github.ref, 'refs/tags/') && contains(github.ref, '-ci-test.')
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.release_info.outputs.version }}
@@ -34,19 +34,19 @@ jobs:
         name: Get release information
         run: python3 ci/release-info.py "$GITHUB_EVENT_NAME"
 
-      - if: ${{ steps.release_info.outputs.release_type == 'nightly' }}
-        name: Delete existing nightly releases
-        continue-on-error: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set +e
-          git ls-remote --tags --refs origin 'refs/tags/nightly*' |
-          cut -f 2 |
-          while read ref; do
-            hub release delete ${ref#refs/tags/}
-            git push --delete origin $ref
-          done
+      # - if: ${{ steps.release_info.outputs.release_type == 'nightly' }}
+      #   name: Delete existing nightly releases
+      #   continue-on-error: true
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #   run: |
+      #     set +e
+      #     git ls-remote --tags --refs origin 'refs/tags/nightly*' |
+      #     cut -f 2 |
+      #     while read ref; do
+      #       hub release delete ${ref#refs/tags/}
+      #       git push --delete origin $ref
+      #     done
       - id: create_release
         name: Create a draft release
         env:
@@ -60,10 +60,10 @@ jobs:
           echo "::set-output name=upload_url::$upload_url"
   cache_info:
     name: Bootstrap cache
-    if: >
-      github.repository_owner == 'input-output-hk'
-      || startsWith(github.ref, 'refs/heads/ci/test/')
-      || startsWith(github.ref, 'refs/tags/') && contains(github.ref, '-ci-test.')
+    # if: >
+    #   github.repository_owner == 'input-output-hk'
+    #   || startsWith(github.ref, 'refs/heads/ci/test/')
+    #   || startsWith(github.ref, 'refs/tags/') && contains(github.ref, '-ci-test.')
     runs-on: ubuntu-latest
     outputs:
       crates-io-index-head: ${{ steps.ls-crates-io-index.outputs.head }}
