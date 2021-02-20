@@ -1,8 +1,8 @@
 name: API Check
 on:
-  push:
-    paths:
-      - 'doc/api/*.yaml'
+  # push:
+  #   paths:
+  #     - 'doc/api/*.yaml'
 jobs:
   build:
     runs-on: ubuntu-latest
