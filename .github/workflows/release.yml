@@ -215,7 +215,12 @@ jobs:
           cd target/${{ matrix.config.target }}/release
           shasum jormungandr jcli > ${{ runner.temp }}/checksum
 
-      - run: sleep 10
+      - name: Test checksum
+        run: |
+          shasum -c ${{ runner.temp }}/checksum
+          sleep 10
+          echo "Checksum after sleep"
+          shasum -c ${{ runner.temp }}/checksum
 
       - name: Pack binaries
         run: |
