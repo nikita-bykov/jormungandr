@@ -6,6 +6,7 @@ on:
       - 'v[0-9]+.*' # Release tags matching v*, i.e. v1.0, v20.15.10
     branches:
       - 'ci/test/nightly' # For testing nightly build workflow
+  workflow_dispatch:
 
 name: Release
 
